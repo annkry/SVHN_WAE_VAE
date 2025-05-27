@@ -1,8 +1,17 @@
+"""
+    Visualization utilities to support training and evaluation.
+    Includes functions for saving image reconstructions, interpolations, and random samples.
+"""
+
 import torch
 from torchvision.utils import save_image, make_grid
 import os
 
 def save_reconstruction(data, recon, filename, nrow=10):
+    """
+        Save original and reconstructed image pairs to a file.
+        Alternates rows of original and reconstructed images.
+    """
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     assert len(data) == len(recon), "Mismatch in number of originals and reconstructions"
     
@@ -20,6 +29,7 @@ def save_reconstruction(data, recon, filename, nrow=10):
     save_image(final_grid, filename, normalize=True, padding=0)
 
 def save_interpolations(model, z_start, z_end, filename, steps=8):
+    """Save interpolated image transitions between two latent vectors."""
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     interpolations = []
     for i in range(len(z_start)):
@@ -30,6 +40,7 @@ def save_interpolations(model, z_start, z_end, filename, steps=8):
     save_image(interpolations, filename, nrow=steps, normalize=True, padding=0)
 
 def save_random_samples(model, latent_dim, filename, num_samples=30):
+    """Generate and save random image samples from the latent space."""
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     z = torch.randn(num_samples, latent_dim).to(next(model.parameters()).device)
     imgs = model.decode(z).cpu()

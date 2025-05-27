@@ -1,3 +1,8 @@
+"""
+    Evaluation utilities for generative models.
+    Includes sharpness calculation, FID evaluation, image saving, and qualitative assessments.
+"""
+
 import torch
 import torch.nn.functional as F
 import numpy as np
@@ -9,6 +14,7 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 
 def compute_sharpness_generated(model, latent_dim, num_images=1000, device="cuda"):
+    """Compute average image sharpness of generated samples using Laplacian filter variance."""
     model.eval().to(device)
     laplace_kernel = torch.tensor([[0, 1, 0], 
                                    [1, -4, 1], 
@@ -30,22 +36,25 @@ def compute_sharpness_generated(model, latent_dim, num_images=1000, device="cuda
     return np.mean(sharpness_scores[:num_images])
 
 def save_images(tensor_list, path_list, transform=None):
+    """Save list of image tensors to given file paths."""
     os.makedirs(os.path.dirname(path_list[0]), exist_ok=True)
     for tensor, path in zip(tensor_list, path_list):
         img = transform(tensor) if transform else transforms.ToPILImage()(tensor)
         img.save(path)
 
 def compute_fid(real_dir, fake_dir, device="cuda"):
+    """Calculate Fréchet Inception Distance (FID) between two image directories."""
     return fid_score.calculate_fid_given_paths([real_dir, fake_dir], batch_size=32, device=device, dims=2048)
 
 def evaluate_fid(model, dataloader, batch_size, latent_dim, model_name, device="cuda"):
+    """Evaluate FID by generating fake images and comparing them to real ones."""
     model.eval()
     real_dir = f"results/fid/{model_name}/real"
     fake_dir = f"results/fid/{model_name}/fake"
     os.makedirs(real_dir, exist_ok=True)
     os.makedirs(fake_dir, exist_ok=True)
 
-    # Save real images
+    # save real images
     real_images = []
     for batch, _ in dataloader:
         real_images.append(batch)
@@ -57,7 +66,7 @@ def evaluate_fid(model, dataloader, batch_size, latent_dim, model_name, device="
     for i, img in enumerate(real_images):
         to_pil(resize(img)).save(os.path.join(real_dir, f"real_{i}.png"))
 
-    # Save generated images
+    # save generated images
     generated = []
     with torch.no_grad():
         while len(generated) * batch_size < 5000:
@@ -71,6 +80,7 @@ def evaluate_fid(model, dataloader, batch_size, latent_dim, model_name, device="
     return compute_fid(real_dir, fake_dir, device)
 
 def load_data(normalize=False):
+    """Load SVHN test set with optional normalization."""
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.5,), (0.5,)) if normalize else lambda x: x
@@ -79,19 +89,20 @@ def load_data(normalize=False):
     return DataLoader(test_set, batch_size=100, shuffle=False)
 
 def evaluate_model(model, model_type, batch_size, latent_dim, device):
+    """Full evaluation: reconstructions, interpolations, samples, sharpness, and FID."""
     model.eval()
     dataloader = load_data(normalize=(model_type == "wae"))
     data, _ = next(iter(dataloader))
     data = data.to(device)
 
-    # Reconstructions
+    # reconstructions
     if model_type == "vae":
         recon, _, _ = model(data)
     else:
         _, recon = model(data)
     save_reconstruction(data[:30].cpu(), recon[:30].cpu(), f"results/reconstructions/{model_type}.png")
 
-    # Interpolations
+    # interpolations
     if model_type == "vae":
         z_start, _ = model.encode(data[:6])
         z_end, _ = model.encode(data[6:12])
@@ -100,10 +111,10 @@ def evaluate_model(model, model_type, batch_size, latent_dim, device):
         z_end = model.encode(data[6:12])
     save_interpolations(model, z_start, z_end, f"results/interpolations/{model_type}.png")
 
-    # Generation of random samples
+    # generation of random samples
     save_random_samples(model, latent_dim, f"results/samples/{model_type}.png")
 
-    # Sharpness
+    # sharpness
     sharpness = compute_sharpness_generated(model, latent_dim, num_images=1000, device=device)
 
     # FID

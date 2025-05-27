@@ -1,3 +1,8 @@
+"""
+    Main script to run training and evaluation of VAE or WAE-MMD models on the SVHN dataset.
+    Supports command-line configuration.
+"""
+
 import argparse
 import torch
 from models.vae import VAE
@@ -7,6 +12,10 @@ from train.train_wae import train_wae
 from utils.evaluation import evaluate_model
 
 def main():
+    """
+        Parse command-line arguments and run selected operations
+        (train and/or evaluate) for VAE or WAE-MMD.
+    """
     parser = argparse.ArgumentParser(description="Run VAE or WAE-MMD on SVHN")
     parser.add_argument('--model', choices=['vae', 'wae'], required=True, help="Choose model to run")
     parser.add_argument('--train', action='store_true', help="Train the model")
@@ -21,6 +30,7 @@ def main():
         if args.train:
             train_vae(model, device)
         if args.evaluate:
+            # load pre-trained weights before evaluation
             model.load_state_dict(torch.load('checkpoints/vae_svhn.pth', map_location=device, weights_only=True))
             evaluate_model(model, 'vae', 100, latent_dim, device)
 
@@ -29,6 +39,7 @@ def main():
         if args.train:
             train_wae(model, device)
         if args.evaluate:
+            # load pre-trained weights before evaluation
             model.load_state_dict(torch.load('checkpoints/wae_svhn.pth', map_location=device, weights_only=True))
             evaluate_model(model, 'wae', 128, latent_dim, device)
 

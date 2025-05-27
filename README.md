@@ -30,11 +30,12 @@ pip install -r requirements.txt
 ```
 
 ### 2. Train & evaluate the models
+Train & evaluate VAE
 ```bash
-# train & evaluate VAE
 python main.py --model vae --train --evaluate
-
-# train & evaluate WAE-MMD
+```
+Train & evaluate WAE-MMD
+```bash
 python main.py --model wae --train --evaluate
 ```
 
